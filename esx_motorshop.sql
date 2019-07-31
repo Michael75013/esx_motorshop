@@ -17,7 +17,7 @@ INSERT INTO `job_grades` (job_name, grade, name, label, salary, skin_male, skin_
 	('motorcycle',3,'boss','Patron',0,'{}','{}')
 ;
 
-CREATE TABLE `motorcycle_bike	` (
+CREATE TABLE `motorcycle_bike` (
 	`id` int(11) NOT NULL AUTO_INCREMENT,
 	`vehicle` varchar(255) NOT NULL,
 	`price` int(11) NOT NULL,
