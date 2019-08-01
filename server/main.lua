@@ -91,7 +91,7 @@ end)
 
 RegisterServerEvent('esx_motorshop:sellVehicle')
 AddEventHandler('esx_motorshop:sellVehicle', function (vehicle)
-	MySQL.Async.fetchAll('SELECT * FROM motorcycle_bike WHERE bike = @vehicle LIMIT 1', {
+	MySQL.Async.fetchAll('SELECT * FROM motorcycle_bike WHERE vehicle = @vehicle LIMIT 1', {
 		['@vehicle'] = vehicle
 	}, function (result)
 		local id = result[1].id
