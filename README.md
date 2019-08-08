@@ -1,11 +1,11 @@
-# esx_motorshop
+# esx_vehicleshop
 
 ## Requirements
 
 * Auto mode (everyone can buy vehicles from the dealer)
   * No need to download another resource
 
-* Player management (the motor dealer job): billing, boss actions and more!
+* Player management (the car dealer job): billing, boss actions and more!
   * [esx_society](https://github.com/ESX-Org/esx_society)
   * [esx_billing](https://github.com/ESX-Org/esx_billing)
   * [esx_addonaccount](https://github.com/ESX-Org/esx_addonaccount)
@@ -16,31 +16,31 @@
 
 ### Using [fvm](https://github.com/qlaffont/fvm-installer)
 ```
-fvm install --save --folder=esx esx-org/esx_motorshop
+fvm install --save --folder=esx esx-org/esx_vehicleshop
 ```
 
 ### Using Git
 ```
 cd resources
-git clone https://github.com/ESX-Org/esx_motorshop [esx]/esx_motorshop
+git clone https://github.com/ESX-Org/esx_vehicleshop [esx]/esx_vehicleshop
 ```
 
 ### Manually
-- Download https://github.com/ESX-Org/esx_motorshop/archive/master.zip
+- Download https://github.com/ESX-Org/esx_vehicleshop/archive/master.zip
 - Put it in the `[esx]` directory
 
 ## Installation
-- Import `esx_motorshop.sql` in your database
+- Import `esx_vehicleshop.sql` in your database
 - Add this in your `server.cfg`:
 
 ```
-start esx_motorshop
+start esx_vehicleshop
 ```
 - If you want player management you have to set `Config.EnablePlayerManagement` to `true` in `config.lua`
 
 # Legal
 ### License
-esx_motorshop - vehicle shop for ESX
+esx_vehicleshop - vehicle shop for ESX
 
 Copyright (C) 2015-2018 Jérémie N'gadi
 
