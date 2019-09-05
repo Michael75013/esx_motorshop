@@ -1,11 +1,198 @@
 ESX              = nil
 local Categories = {}
 local Vehicles   = {}
+local PlayersTransforming  = {}
+local PlayersSelling       = {}
+local PlayersHarvesting = {}
+local key = 1
 
 TriggerEvent('esx:getSharedObject', function(obj) ESX = obj end)
+if Config.MaxInService ~= -1 then
+	TriggerEvent('esx_service:activateService', 'motorcycle', Config.MaxInService)
+end
 
 TriggerEvent('esx_phone:registerNumber', 'motorcycle', _U('dealer_customers'), false, false)
 TriggerEvent('esx_society:registerSociety', 'motorcycle', _U('car_dealer'), 'society_motorcycle', 'society_motorcycle', 'society_motorcycle', {type = 'private'})
+
+local function Harvest(source, zone)
+	if PlayersHarvesting[source] == true then
+
+		local xPlayer  = ESX.GetPlayerFromId(source)
+		if zone == "KeyFarm" then
+			local CompoQuantity = xPlayer.getInventoryItem('compo').count
+			if CompoQuantity >= 50 then
+				TriggerClientEvent('esx:showNotification', source, _U('not_enough_place'))
+				return
+			else
+				SetTimeout(3500, function()
+					xPlayer.addInventoryItem('compo', 1)
+					Harvest(source, zone)
+				end)
+			end
+		end
+	end
+end
+
+RegisterServerEvent('esx_motorshop:startHarvest')
+AddEventHandler('esx_motorshop:startHarvest', function(zone)
+	local _source = source
+  	
+	if PlayersHarvesting[_source] == false then
+		TriggerClientEvent('esx:showNotification', _source, '~r~C\'est pas bien de glitch ~w~')
+		PlayersHarvesting[_source]=false
+	else
+		PlayersHarvesting[_source]=true
+		TriggerClientEvent('esx:showNotification', _source, _U('compo_taken'))  
+		Harvest(_source,zone)
+	end
+end)
+
+
+RegisterServerEvent('esx_motorshop:stopHarvest')
+AddEventHandler('esx_motorshop:stopHarvest', function()
+	local _source = source
+	
+	if PlayersHarvesting[_source] == true then
+		PlayersHarvesting[_source]=false
+		TriggerClientEvent('esx:showNotification', _source, 'Vous sortez de la ~r~zone')
+	else
+		TriggerClientEvent('esx:showNotification', _source, 'Vous pouvez ~g~récolter')
+		PlayersHarvesting[_source]=true
+	end
+end)
+
+local function Transform(source)
+
+  SetTimeout(3500, function()
+
+        if PlayersTransforming[source] == true then
+
+            local xPlayer  = ESX.GetPlayerFromId(source)
+
+            local CompoQuantity = xPlayer.getInventoryItem('compo').count
+            local KeyQuantity = xPlayer.getInventoryItem('cles').count
+
+            if KeyQuantity > 49 then
+                TriggerClientEvent('esx:showNotification', source, _U('too_many_key'))
+            elseif CompoQuantity  < 1 then
+                TriggerClientEvent('esx:showNotification', source, _U('not_enough_compo'))
+            else
+                xPlayer.removeInventoryItem('compo', 1)
+                xPlayer.addInventoryItem('cles', 1)
+
+                Transform(source)
+            end
+
+        end
+    end)
+end
+
+RegisterServerEvent('esx_motorshop:startTransform')
+AddEventHandler('esx_motorshop:startTransform', function(zone)
+	local _source = source
+  	
+	if PlayersTransforming[_source] == false then
+		TriggerClientEvent('esx:showNotification', _source, '~r~C\'est pas bien de glitch ~w~')
+		PlayersTransforming[_source]=false
+	else
+		PlayersTransforming[_source]=true
+		TriggerClientEvent('esx:showNotification', _source, _U('transforming_in_progress')) 
+		Transform(_source,zone)
+	end
+end)
+
+RegisterServerEvent('esx_motorshop:stopTransform')
+AddEventHandler('esx_motorshop:stopTransform', function()
+
+	local _source = source
+	
+	if PlayersTransforming[_source] == true then
+		PlayersTransforming[_source]=false
+		TriggerClientEvent('esx:showNotification', _source, 'Vous sortez de la ~r~zone')
+		
+	else
+		TriggerClientEvent('esx:showNotification', _source, 'Vous pouvez ~g~transformer vos composants')
+		PlayersTransforming[_source]=true
+		
+	end
+end)
+
+local function Sell(source, zone)
+
+	if PlayersSelling[source] == true then
+		local xPlayer  = ESX.GetPlayerFromId(source)
+		
+		if zone == 'SellFarm' then
+			if xPlayer.getInventoryItem('cles').count < 25 then
+				key = 0
+			else
+				key = 1
+			end
+	
+			if key == 0 then
+				TriggerClientEvent('esx:showNotification', source, _U('no_product_sale'))
+				return
+			elseif xPlayer.getInventoryItem('cles').count < 25 then
+				TriggerClientEvent('esx:showNotification', source, _U('no_key_sale'))
+				key = 0
+				return
+			else
+			    if (key == 1) then
+					SetTimeout(10000, function()
+						local argent = math.random(170,182)
+						local money = math.random(400,450)
+						xPlayer.removeInventoryItem('cles', 25)
+						local societyAccount = nil
+
+						TriggerEvent('esx_addonaccount:getSharedAccount', 'society_motorcycle', function(account)
+							societyAccount = account
+						end)
+						if societyAccount ~= nil then
+							xPlayer.addAccountMoney('bank',argent)
+							societyAccount.addMoney(money)
+							TriggerClientEvent('esx:showNotification', xPlayer.source, _U('have_earned') .. argent .. ' $')
+							TriggerClientEvent('esx:showNotification', xPlayer.source, _U('money_transfer'))
+							TriggerClientEvent('esx:showNotification', xPlayer.source, _U('comp_earned') .. money .. ' $')
+						end
+						Sell(source,zone)
+					end)
+				end				
+			end
+		end
+	end
+end
+
+RegisterServerEvent('esx_motorshop:startSell')
+AddEventHandler('esx_motorshop:startSell', function(zone)
+
+	local _source = source
+	
+	if PlayersSelling[_source] == false then
+		TriggerClientEvent('esx:showNotification', _source, '~r~C\'est pas bien de glitch ~w~')
+		PlayersSelling[_source]=false
+	else
+		PlayersSelling[_source]=true
+		TriggerClientEvent('esx:showNotification', _source, _U('sale_in_prog'))
+		Sell(_source, zone)
+	end
+
+end)
+
+RegisterServerEvent('esx_motorshop:stopSell')
+AddEventHandler('esx_motorshop:stopSell', function()
+
+	local _source = source
+	
+	if PlayersSelling[_source] == true then
+		PlayersSelling[_source]=false
+		TriggerClientEvent('esx:showNotification', _source, 'Vous sortez de la ~r~zone')
+		
+	else
+		TriggerClientEvent('esx:showNotification', _source, 'Vous pouvez ~g~vendre')
+		PlayersSelling[_source]=true
+	end
+
+end)
 
 Citizen.CreateThread(function()
 	local char = Config.PlateLetters
@@ -465,6 +652,28 @@ AddEventHandler('esx_motorshop:setJobVehicleState', function(plate, state)
 			print(('esx_motorshop: %s exploited the garage!'):format(xPlayer.identifier))
 		end
 	end)
+end)
+
+RegisterServerEvent('esx_motorshop:annonce')
+AddEventHandler('esx_motorshop:annonce', function(result)
+  local _source  = source
+  local xPlayer  = ESX.GetPlayerFromId(_source)
+  local xPlayers = ESX.GetPlayers()
+  local text     = result
+  print(text)
+  for i=1, #xPlayers, 1 do
+    local xPlayer = ESX.GetPlayerFromId(xPlayers[i])
+    TriggerClientEvent('esx_motorshop:annonce', xPlayers[i],text)
+  end
+
+  Wait(8000)
+
+  local xPlayers = ESX.GetPlayers()
+  for i=1, #xPlayers, 1 do
+    local xPlayer = ESX.GetPlayerFromId(xPlayers[i])
+    TriggerClientEvent('esx_motorshop:annoncestop', xPlayers[i])
+  end
+
 end)
 
 function PayRent(d, h, m)

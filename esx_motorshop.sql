@@ -10,6 +10,10 @@ INSERT INTO `jobs` (name, label) VALUES
 	('motorcycle','Motorcycle')
 ;
 
+INSERT INTO `items` (`name`, `label`, `limit`, `rare`, `can_remove`) VALUES
+    ('compo', 'Composants', 50, 0, 1),
+    ('cles', 'Clés véhicules', 50, 0, 1);
+
 INSERT INTO `job_grades` (job_name, grade, name, label, salary, skin_male, skin_female) VALUES
 	('motorcycle',0,'recruit','Recrue',10,'{}','{}'),
 	('motorcycle',1,'novice','Novice',25,'{}','{}'),

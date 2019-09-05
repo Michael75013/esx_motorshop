@@ -46,6 +46,9 @@ Citizen.CreateThread(function ()
 	if Config.EnablePlayerManagement then
 		if ESX.PlayerData.job.name == 'motorcycle' then
 			Config.Zones.ShopEntering.Type = 1
+			Config.Zones.KeyFarm.Type = 27
+			Config.Zones.TraitementKey.Type = 27
+			Config.Zones.SellFarm.Type = 27
 
 			if ESX.PlayerData.job.grade_name == 'boss' then
 				Config.Zones.BossActions.Type = 1
@@ -54,6 +57,9 @@ Citizen.CreateThread(function ()
 		else
 			Config.Zones.ShopEntering.Type = -1
 			Config.Zones.BossActions.Type  = -1
+			Config.Zones.KeyFarm.Type = -1
+			Config.Zones.TraitementKey.Type = -1
+			Config.Zones.SellFarm.Type = -1
 		end
 	end
 end)
@@ -65,6 +71,9 @@ AddEventHandler('esx:playerLoaded', function(xPlayer)
 	if Config.EnablePlayerManagement then
 		if ESX.PlayerData.job.name == 'motorcycle' then
 			Config.Zones.ShopEntering.Type = 1
+			Config.Zones.KeyFarm.Type = 27
+			Config.Zones.TraitementKey.Type = 27
+			Config.Zones.SellFarm.Type = 27
 
 			if ESX.PlayerData.job.grade_name == 'boss' then
 				Config.Zones.BossActions.Type = 1
@@ -73,6 +82,9 @@ AddEventHandler('esx:playerLoaded', function(xPlayer)
 		else
 			Config.Zones.ShopEntering.Type = -1
 			Config.Zones.BossActions.Type  = -1
+			Config.Zones.KeyFarm.Type = -1
+			Config.Zones.TraitementKey.Type = -1
+			Config.Zones.SellFarm.Type = -1
 		end
 	end
 end)
@@ -86,6 +98,27 @@ RegisterNetEvent('esx_motorshop:sendVehicles')
 AddEventHandler('esx_motorshop:sendVehicles', function (vehicles)
 	Vehicles = vehicles
 end)
+
+function Message()
+  Citizen.CreateThread(function()
+    while messagenotfinish do
+        Citizen.Wait(1)
+
+      DisplayOnscreenKeyboard(1, "FMMC_MPM_NA", "", "", "", "", "", 80)
+        while (UpdateOnscreenKeyboard() == 0) do
+            DisableAllControlActions(0);
+           Citizen.Wait(1)
+        end
+        if (GetOnscreenKeyboardResult()) then
+            local result = GetOnscreenKeyboardResult()
+            messagenotfinish = false
+           TriggerServerEvent('esx_motorshop:annonce',result)
+           
+        end
+    end
+  end)
+  
+end
 
 function DeleteShopInsideVehicles()
 	while #LastVehicles > 0 do
@@ -411,6 +444,8 @@ function OpenResellerMenu()
 		title    = _U('car_dealer'),
 		align    = 'top-left',
 		elements = {
+			{label = 'Passer une annonce',                 value = 'announce'},
+			{label = _U('vehicle_list'),                   value = 'vehicle_list'},
 			{label = _U('buy_vehicle'),                    value = 'buy_vehicle'},
 			{label = _U('pop_vehicle'),                    value = 'pop_vehicle'},
 			{label = _U('depop_vehicle'),                  value = 'depop_vehicle'},
@@ -438,6 +473,9 @@ function OpenResellerMenu()
 			DeleteShopInsideVehicles()
 		elseif action == 'return_provider' then
 			ReturnVehicleProvider()
+	    elseif data.current.value == 'announce' then
+            messagenotfinish = true
+            Message()
 		elseif action == 'create_bill' then
 
 			local closestPlayer, closestDistance = ESX.Game.GetClosestPlayer()
@@ -469,6 +507,78 @@ function OpenResellerMenu()
 
 		elseif action == 'get_rented_vehicles' then
 			OpenRentedVehiclesMenu()
+		elseif data.current.value == 'vehicle_list' then
+
+			if Config.EnableSocietyOwnedVehicles then
+
+				local elements = {}
+
+				ESX.TriggerServerCallback('esx_society:getVehiclesInGarage', function(vehicles)
+					for i=1, #vehicles, 1 do
+						table.insert(elements, {
+							label = GetDisplayNameFromVehicleModel(vehicles[i].model) .. ' [' .. vehicles[i].plate .. ']',
+							value = vehicles[i]
+						})
+					end
+
+					ESX.UI.Menu.Open('default', GetCurrentResourceName(), 'vehicle_spawner', {
+						title    = _U('service_vehicle'),
+						align    = 'top-left',
+						elements = elements
+					}, function(data, menu)
+						menu.close()
+						local vehicleProps = data.current.value
+
+						ESX.Game.SpawnVehicle(vehicleProps.model, Config.Zones.VehicleSpawnPoint.Pos, 270.0, function(vehicle)
+							ESX.Game.SetVehicleProperties(vehicle, vehicleProps)
+							local playerPed = PlayerPedId()
+							TaskWarpPedIntoVehicle(playerPed,  vehicle,  -1)
+						end)
+
+						TriggerServerEvent('esx_society:removeVehicleFromGarage', 'motorcycle', vehicleProps)
+					end, function(data, menu)
+						menu.close()
+					end)
+				end, 'motorcycle')
+
+			else
+
+				local elements = {
+					{label = _U('gburrito2'),  value = 'gburrito2'}
+				}
+
+				ESX.UI.Menu.CloseAll()
+
+				ESX.UI.Menu.Open('default', GetCurrentResourceName(), 'spawn_vehicle', {
+					title    = _U('service_vehicle'),
+					align    = 'top-left',
+					elements = elements
+				}, function(data, menu)
+					if Config.MaxInService == -1 then
+						ESX.Game.SpawnVehicle(data.current.value, Config.Zones.VehicleSpawnPoint.Pos, 58.1, function(vehicle)
+							local playerPed = PlayerPedId()
+							TaskWarpPedIntoVehicle(playerPed, vehicle, -1)
+						end)
+					else
+						ESX.TriggerServerCallback('esx_service:enableService', function(canTakeService, maxInService, inServiceCount)
+							if canTakeService then
+								ESX.Game.SpawnVehicle(data.current.value, Config.Zones.VehicleSpawnPoint.Pos, 58.1, function(vehicle)
+									local playerPed = PlayerPedId()
+									TaskWarpPedIntoVehicle(playerPed,  vehicle, -1)
+								end)
+							else
+								ESX.ShowNotification(_U('service_full') .. inServiceCount .. '/' .. maxInService)
+							end
+						end, 'motorcycle')
+					end
+
+					menu.close()
+				end, function(data, menu)
+					menu.close()
+					OpenResellerMenu()
+				end)
+
+			end
 		elseif action == 'set_vehicle_owner_sell' then
 
 			local closestPlayer, closestDistance = ESX.Game.GetClosestPlayer()
@@ -760,6 +870,80 @@ function OpenPutStocksMenu()
 	end)
 end
 
+function OpenSocietyActionsMenu()
+
+  local elements = {}
+
+  table.insert(elements, {label = 'GPS',    value = 'work_gps'})
+
+  ESX.UI.Menu.CloseAll()
+
+  ESX.UI.Menu.Open(
+    'default', GetCurrentResourceName(), 'motorcycle_actions',
+    {
+      title    = 'Menu concessionnaire',
+      align    = 'top-left',
+      elements = elements
+    },
+    function(data, menu)
+
+      if data.current.value == 'work_gps' then
+        ESX.UI.Menu.Open(
+          'default', GetCurrentResourceName(), 'work_gps',
+          {
+            css      = 'gps',
+            title    = 'GPS Concessions',
+            align    = 'top-left',
+            elements = {
+              {label = 'Entreprise', value = 'motorcycle_gps_entreprise'},
+              {label = 'Récolte composants', value = 'motorcycle_gps_farm'},
+              {label = 'Assemblage composants', value = 'motorcycle_gps_craft'},
+              {label = 'Vente clés', value = 'motorcycle_gps_sell'}
+            },
+          },
+          function(data2, menu2)
+
+            if data2.current.value == 'motorcycle_gps_entreprise' then
+              SetNewWaypoint( 1998.36, 3051.55, 46.214 )
+              local source = GetPlayerServerId();
+              ESX.ShowNotification("~b~Destination ajouté au GPS !")
+            end
+
+            if data2.current.value == 'motorcycle_gps_farm' then
+              SetNewWaypoint( 1737.777, 3709.674, 33.190 )
+              local source = GetPlayerServerId();
+              ESX.ShowNotification("~b~Destination ajouté au GPS !")
+            end
+
+            if data2.current.value == 'motorcycle_gps_craft' then
+              SetNewWaypoint( 473.788, -1312.760, 28.220 )
+              local source = GetPlayerServerId();
+              ESX.ShowNotification("~b~Destination ajouté au GPS !")
+            end
+
+            if data2.current.value == 'motorcycle_gps_sell' then
+              SetNewWaypoint( 1980.147, 3049.042, 49.440 )
+              local source = GetPlayerServerId();
+              ESX.ShowNotification("~b~Destination ajouté au GPS !")
+            end
+            
+          end,
+          function(data2, menu2)
+            menu2.close()
+          end
+        )
+
+      end     
+    end,
+    function(data, menu)
+
+      menu.close()
+
+    end
+  )
+
+end
+
 RegisterNetEvent('esx:setJob')
 AddEventHandler('esx:setJob', function (job)
 	ESX.PlayerData.job = job
@@ -767,6 +951,9 @@ AddEventHandler('esx:setJob', function (job)
 	if Config.EnablePlayerManagement then
 		if ESX.PlayerData.job.name == 'motorcycle' then
 			Config.Zones.ShopEntering.Type = 1
+			Config.Zones.KeyFarm.Type = 27
+			Config.Zones.TraitementKey.Type = 27
+			Config.Zones.SellFarm.Type = 27
 
 			if ESX.PlayerData.job.grade_name == 'boss' then
 				Config.Zones.BossActions.Type = 1
@@ -774,6 +961,9 @@ AddEventHandler('esx:setJob', function (job)
 		else
 			Config.Zones.ShopEntering.Type = -1
 			Config.Zones.BossActions.Type  = -1
+			Config.Zones.KeyFarm.Type = -1
+			Config.Zones.TraitementKey.Type = -1
+			Config.Zones.SellFarm.Type = -1
 		end
 	end
 end)
@@ -840,6 +1030,17 @@ AddEventHandler('esx_motorshop:hasEnteredMarker', function (zone)
 
 		end
 
+	elseif zone == 'VehicleDeleter' then
+		local playerPed = PlayerPedId()
+
+		if IsPedInAnyVehicle(playerPed, false) then
+			local vehicle = GetVehiclePedIsIn(playerPed,  false)
+
+			CurrentAction     = 'delete_vehicle'
+			CurrentActionMsg  = _U('veh_stored')
+			CurrentActionData = {vehicle = vehicle}
+		end
+
 	elseif zone == 'BossActions' and Config.EnablePlayerManagement and ESX.PlayerData.job ~= nil and ESX.PlayerData.job.name == 'motorcycle' and ESX.PlayerData.job.grade_name == 'boss' then
 
 		CurrentAction     = 'boss_actions_menu'
@@ -847,13 +1048,37 @@ AddEventHandler('esx_motorshop:hasEnteredMarker', function (zone)
 		CurrentActionData = {}
 
 	end
+
+	if zone == 'KeyFarm' and Config.EnablePlayerManagement and ESX.PlayerData.job ~= nil and ESX.PlayerData.job.name == 'motorcycle'  then
+		CurrentAction     = 'key_harvest'
+		CurrentActionMsg  = _U('press_collect')
+		CurrentActionData = {zone= zone}
+	end
+		
+	if zone == 'TraitementKey' and Config.EnablePlayerManagement and ESX.PlayerData.job ~= nil and ESX.PlayerData.job.name == 'motorcycle'  then
+		CurrentAction     = 'key_traitement'
+		CurrentActionMsg  = _U('press_traitement')
+		CurrentActionData = {zone= zone}
+	end
+		
+	if zone == 'SellFarm' and Config.EnablePlayerManagement and ESX.PlayerData.job ~= nil and ESX.PlayerData.job.name == 'motorcycle'  then
+		CurrentAction     = 'farm_resell'
+		CurrentActionMsg  = _U('press_sell')
+		CurrentActionData = {zone = zone}
+	end
 end)
 
-AddEventHandler('esx_motorshop:hasExitedMarker', function (zone)
-	if not IsInShopMenu then
-		ESX.UI.Menu.CloseAll()
+AddEventHandler('esx_motorshop:hasExitedMarker', function(zone)
+	ESX.UI.Menu.CloseAll()
+	if (zone == 'KeyFarm')  then 
+		TriggerServerEvent('esx_motorshop:stopHarvest')
+	end  
+	if (zone == 'TraitementKey' ) then 
+		TriggerServerEvent('esx_motorshop:stopTransform')
 	end
-
+	if (zone == 'SellFarm') then 
+		TriggerServerEvent('esx_motorshop:stopSell')
+	end
 	CurrentAction = nil
 end)
 
@@ -891,7 +1116,7 @@ Citizen.CreateThread(function()
 
 	SetBlipSprite (blip, 226)
 	SetBlipDisplay(blip, 4)
-	SetBlipScale  (blip, 1.5)
+	SetBlipScale  (blip, 1.0)
 	SetBlipAsShortRange(blip, true)
 
 	BeginTextCommandSetBlipName("STRING")
@@ -962,12 +1187,36 @@ Citizen.CreateThread(function()
 							else
 								ESX.ShowNotification(_U('license_missing'))
 							end
-						end, GetPlayerServerId(PlayerId()), 'drive')
+						end, GetPlayerServerId(PlayerId()), 'drive_bike')
 					else
 						OpenShopMenu()
 					end
 				elseif CurrentAction == 'reseller_menu' then
 					OpenResellerMenu()
+				elseif CurrentAction == 'key_harvest' then
+		            TriggerServerEvent('esx_motorshop:startHarvest', CurrentActionData.zone)
+		        elseif CurrentAction == 'key_traitement' then
+		            TriggerServerEvent('esx_motorshop:startTransform', CurrentActionData.zone)
+		        elseif CurrentAction == 'farm_resell' then
+		            TriggerServerEvent('esx_motorshop:startSell', CurrentActionData.zone)
+		        elseif CurrentAction == 'delete_vehicle' then
+
+					if Config.EnableSocietyOwnedVehicles then
+
+						local vehicleProps = ESX.Game.GetVehicleProperties(CurrentActionData.vehicle)
+						TriggerServerEvent('esx_society:putVehicleInGarage', 'motorcycle', vehicleProps)
+
+					else
+
+						if
+							GetEntityModel(vehicle) == GetHashKey('gburrito2')
+						then
+							TriggerServerEvent('esx_service:disableService', 'motorcycle')
+						end
+
+					end
+
+					ESX.Game.DeleteVehicle(CurrentActionData.vehicle)
 				elseif CurrentAction == 'give_back_vehicle' then
 					ESX.TriggerServerCallback('esx_motorshop:giveBackVehicle', function(isRentedVehicle)
 						if isRentedVehicle then
@@ -989,11 +1238,23 @@ Citizen.CreateThread(function()
 				elseif CurrentAction == 'boss_actions_menu' then
 					OpenBossActionsMenu()
 				end
-
+                
 				CurrentAction = nil
 			end
 		end
 	end
+end)
+
+-- Key Controls
+Citizen.CreateThread(function()
+  while true do
+
+    Citizen.Wait(0)
+
+    if IsControlJustReleased(0,  Keys['F6']) and ESX.PlayerData.job ~= nil and ESX.PlayerData.job.name == 'motorcycle' and not ESX.UI.Menu.IsOpen('default', GetCurrentResourceName(), 'motorcycle_actions') then
+        OpenSocietyActionsMenu()
+    end
+  end
 end)
 
 Citizen.CreateThread(function()
@@ -1004,3 +1265,50 @@ Citizen.CreateThread(function()
 	EnableInteriorProp(interiorID, 'csr_beforeMission') -- Load large window
 	RefreshInterior(interiorID)
 end)
+
+function DrawAdvancedTextCNN (x,y ,w,h,sc, text, r,g,b,a,font,jus)
+    SetTextFont(font)
+    SetTextProportional(0)
+    SetTextScale(sc, sc)
+    N_0x4e096588b13ffeca(jus)
+    SetTextColour(r, g, b, a)
+    SetTextDropShadow(0, 0, 0, 0,255)
+    SetTextEdge(1, 0, 0, 0, 255)
+    SetTextDropShadow()
+    SetTextOutline()
+    SetTextEntry("STRING")
+    AddTextComponentString(text)
+    DrawText(x - 0.1+w, y - 0.02+h)
+end
+
+
+ Citizen.CreateThread(function()
+        while true do
+            Citizen.Wait(1)    
+                           
+                if (affichenews == true) then
+               
+                DrawRect(0.494, 0.227, 5.185, 0.118, 0, 0, 0, 150)
+                DrawAdvancedTextCNN(0.588, 0.14, 0.005, 0.0028, 0.8, "~o~ Concessions Moto ~d~", 255, 255, 255, 255, 1, 0)
+                DrawAdvancedTextCNN(0.586, 0.199, 0.005, 0.0028, 0.6, texteafiche, 255, 255, 255, 255, 7, 0)
+                DrawAdvancedTextCNN(0.588, 0.246, 0.005, 0.0028, 0.4, "", 255, 255, 255, 255, 0, 0)
+
+            end                
+       end
+    end)
+
+
+
+RegisterNetEvent('esx_motorshop:annonce')
+AddEventHandler('esx_motorshop:annonce', function(text)
+    texteafiche = text
+    affichenews = true
+    
+  end) 
+
+
+RegisterNetEvent('esx_motorshop:annoncestop')
+AddEventHandler('esx_motorshop:annoncestop', function()
+    affichenews = false
+    
+  end)
